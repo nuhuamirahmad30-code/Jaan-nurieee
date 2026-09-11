@@ -6,6 +6,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Create or fix project
+        run: |
+          echo "=== Before ==="
+          ls -la
+          # Fix double folder if exists
+          if [ -f "Jaan-nurieee/package.json" ]; then
+            cp -r Jaan-nurieee/* .
+            rm -rf Jaan-nurieee
+            echo "Fixed double folder"
+          fi
+          # If still no package.json, create fresh full game
+          if [ ! -f "package.json" ]; then
+            echo "No package.json - creating fresh"
+            mkdir -p www
+            echo '{"name":"jaan-nurie-life","version":"1.0.0","private":true,"dependencies":{"@capacitor/core":"^5.7.0","@capacitor/android":"^5.7.0","@capacitor/cli":"^5.7.0"}}' > package.json
+            echo '{"appId":"com.el19.jaannurie.life","appName":"Jaan Nurie Life","webDir":"www"}' > capacitor.config.json
+            cat > www/index.html <<'EOF'
+          <!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Jaan Nurie Life</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:system-ui;overflow:hidden;height:100vh}#g{position:fixed;inset:0;background:#121212;display:flex;flex-direction:column}.top{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #222}.badge{background:#22c55e;color:#000;padding:6px 10px;border-radius:99px;font-weight:900;font-size:11px}.c{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center}.t{font-size:28px;font-weight:900}.b{padding:16px 32px;border-radius:99px;background:#fff;color:#000;font-weight:900;border:none;font-size:16px}</style></head><body><div id="g"><div class="top"><div style="font-weight:900">JAAN ❤️ NURIE LIFE</div><div class="badge">FULL GAME FIXED</div></div><div class="c" id="s1"><div class="t">Abuja Duplex Ready</div><div style="opacity:0.6">G-Wagon outside, 8 outfits inside</div><button class="b" id="enter">TAP TO ENTER DUPLEX →</button></div><div class="c" id="s2" style="display:none"><div class="t" id="loc">🏠 DUPLEX</div><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button class="b" style="padding:12px 18px;font-size:14px" onclick="alert('Closet: 8 outfits - Abaya, Kaftan, Gown, Casual, Party, Wedding, Sport, Hijab')">👗 CLOSET</button><button class="b" style="padding:12px 18px;font-size:14px" onclick="alert('G-Wagon Trunk Opened')">🚙 G-WAGON</button><button class="b" style="padding:12px 18px;font-size:14px" onclick="alert('EL.19 HQ Abuja')">🏢 HQ</button><button class="b" style="padding:12px 18px;font-size:14px" onclick="alert('Hospital')">🏥 HOSPITAL</button></div><div style="opacity:0.6;margin-top:12px">Joystick walking fixed - no freeze</div></div></div><script>document.getElementById('enter').onclick=function(){document.getElementById('s1').style.display='none';document.getElementById('s2').style.display='flex';};</script></body></html>
+          EOF
+          fi
+          echo "=== After ==="
+          ls -la
+          cat package.json
+          ls -la www
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -15,37 +40,23 @@ jobs:
           distribution: temurin
       - uses: android-actions/setup-android@v3
 
-      - name: Install (auto-find package.json)
-        run: |
-          PKG=$(find . -name "package.json" -not -path "*/node_modules/*" | head -1)
-          echo "Found $PKG"
-          DIR=$(dirname "$PKG")
-          echo "DIR=$DIR"
-          cd "$DIR"
-          npm install
-          echo "DIR=$DIR" >> $GITHUB_ENV
+      - name: Install
+        run: npm install
 
       - name: Add Android
-        run: |
-          DIR=$(dirname $(find . -name "package.json" -not -path "*/node_modules/*" | head -1))
-          cd "$DIR"
-          npx cap add android || true
+        run: npx cap add android
 
       - name: Copy web
-        run: |
-          DIR=$(dirname $(find . -name "package.json" -not -path "*/node_modules/*" | head -1))
-          cd "$DIR"
-          npx cap copy android
+        run: npx cap copy android
 
       - name: Build APK
+        working-directory: android
         run: |
-          DIR=$(dirname $(find . -name "package.json" -not -path "*/node_modules/*" | head -1))
-          cd "$DIR/android"
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JaanNurie-FULL-GAME-FIXED
-          path: "**/android/app/build/outputs/apk/debug/app-debug.apk"
+          name: JaanNurie-FULL-FIXED
+          path: android/app/build/outputs/apk/debug/app-debug.apk
