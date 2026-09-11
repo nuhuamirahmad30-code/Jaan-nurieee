@@ -5,6 +5,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Fix double-folder upload
+        run: |
+          echo "Checking for nested folder..."
+          if [ -f "Jaan-nurieee/package.json" ]; then
+            echo "FOUND nested Jaan-nurieee/Jaan-nurieee - fixing"
+            mv Jaan-nurieee/* .
+            mv Jaan-nurieee/.* . 2>/dev/null || true
+            rm -rf Jaan-nurieee
+          fi
+          if [ -d "www" ]; then echo "www OK"; else echo "www MISSING - need to upload www folder"; fi
+          ls -la
+          ls -la www 2>&1 | head -20
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -13,19 +27,24 @@ jobs:
           java-version: '17'
           distribution: temurin
       - uses: android-actions/setup-android@v3
+
       - name: Install
         run: npm install
+
       - name: Add Android
         run: npx cap add android
+
       - name: Copy web
         run: npx cap copy android
+
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JaanNurie-APK
+          name: JaanNurie-FULL-GAME
           path: android/app/build/outputs/apk/debug/app-debug.apk
