@@ -6,19 +6,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fix double-folder upload
-        run: |
-          echo "Checking for nested folder..."
-          if [ -f "Jaan-nurieee/package.json" ]; then
-            echo "FOUND nested Jaan-nurieee/Jaan-nurieee - fixing"
-            mv Jaan-nurieee/* .
-            mv Jaan-nurieee/.* . 2>/dev/null || true
-            rm -rf Jaan-nurieee
-          fi
-          if [ -d "www" ]; then echo "www OK"; else echo "www MISSING - need to upload www folder"; fi
-          ls -la
-          ls -la www 2>&1 | head -20
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -28,23 +15,37 @@ jobs:
           distribution: temurin
       - uses: android-actions/setup-android@v3
 
-      - name: Install
-        run: npm install
+      - name: Install (auto-find package.json)
+        run: |
+          PKG=$(find . -name "package.json" -not -path "*/node_modules/*" | head -1)
+          echo "Found $PKG"
+          DIR=$(dirname "$PKG")
+          echo "DIR=$DIR"
+          cd "$DIR"
+          npm install
+          echo "DIR=$DIR" >> $GITHUB_ENV
 
       - name: Add Android
-        run: npx cap add android
+        run: |
+          DIR=$(dirname $(find . -name "package.json" -not -path "*/node_modules/*" | head -1))
+          cd "$DIR"
+          npx cap add android || true
 
       - name: Copy web
-        run: npx cap copy android
+        run: |
+          DIR=$(dirname $(find . -name "package.json" -not -path "*/node_modules/*" | head -1))
+          cd "$DIR"
+          npx cap copy android
 
       - name: Build APK
-        working-directory: android
         run: |
+          DIR=$(dirname $(find . -name "package.json" -not -path "*/node_modules/*" | head -1))
+          cd "$DIR/android"
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: JaanNurie-FULL-GAME
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: JaanNurie-FULL-GAME-FIXED
+          path: "**/android/app/build/outputs/apk/debug/app-debug.apk"
