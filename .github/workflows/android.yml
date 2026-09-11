@@ -1,0 +1,47 @@
+name: Build APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: RECREATE FULL GAME - fixes freeze
+        run: |
+          rm -rf Jaan-nurieee Jaan-nuriee* Jaan-nurie* 2>/dev/null || true
+          rm -f *.zip *.html package.json capacitor.config.json
+          rm -rf www android node_modules
+          mkdir -p www
+          echo '{"name":"jaan-nurie-life","version":"1.0.0","private":true,"dependencies":{"@capacitor/core":"^5.7.0","@capacitor/android":"^5.7.0","@capacitor/cli":"^5.7.0"}}' > package.json
+          echo '{"appId":"com.el19.jaannurie.life","appName":"Jaan Nurie Life","webDir":"www","bundledWebRuntime":false}' > capacitor.config.json
+          cat > www/index.html <<'HTML'
+          <!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><title>Jaan Nurie Life</title><style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:system-ui;overflow:hidden;height:100vh}#g{position:fixed;inset:0;background:radial-gradient(120% 120% at 50% 0%,#1e1b4b 0%,#0a0a0a 60%);display:flex;flex-direction:column}.top{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #222}.badge{background:#22c55e;color:#000;padding:6px 10px;border-radius:99px;font-weight:900;font-size:11px}.c{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;text-align:center}.t{font-size:32px;font-weight:900}.b{padding:18px 36px;border-radius:99px;background:#fff;color:#000;font-weight:900;border:none;font-size:18px}.joy{position:fixed;left:20px;bottom:20px;width:120px;height:120px;background:rgba(255,255,255,0.1);border-radius:50%;border:2px solid rgba(255,255,255,0.3);display:none}.stick{position:absolute;left:30px;top:30px;width:60px;height:60px;background:#fff;border-radius:50%}</style></head><body><div id="g"><div class="top"><div style="font-weight:900">JAAN ❤️ NURIE LIFE</div><div class="badge">FULL GAME ✓</div></div><div class="c" id="start"><div class="t">Abuja Duplex Ready</div><div style="opacity:0.6;max-width:320px">G-Wagon parked outside. 8 outfits in closet. Walk with joystick.</div><button class="b" id="enter">TAP TO ENTER →</button></div><div class="c" id="game" style="display:none"><div class="t" id="loc">🏠 DUPLEX LIVING ROOM</div><div style="opacity:0.8">Use joystick to move. Tap doors to enter.</div><div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center"><button class="b" style="padding:12px 20px;font-size:14px" onclick="document.getElementById('loc').innerText='👗 CLOSET - 8 OUTFITS'; alert('Outfits: 1-Abaya 2-Kaftan 3-Gown 4-Casual 5-Party 6-Wedding 7-Sport 8-Hijab')">👗 CLOSET</button><button class="b" style="padding:12px 20px;font-size:14px" onclick="document.getElementById('loc').innerText='🚙 G-WAGON TRUNK'; alert('G-Wagon Trunk: Your outfits stored here')">🚙 G-WAGON</button><button class="b" style="padding:12px 20px;font-size:14px" onclick="document.getElementById('loc').innerText='🏢 EL.19 HQ'; alert('EL.19 HQ Abuja')">🏢 EL.19 HQ</button><button class="b" style="padding:12px 20px;font-size:14px" onclick="document.getElementById('loc').innerText='🏥 HOSPITAL'">🏥 HOSPITAL</button></div></div><div class="joy" id="joy"><div class="stick" id="stick"></div></div></div><script>document.getElementById('enter').onclick=function(){document.getElementById('start').style.display='none';document.getElementById('game').style.display='flex';document.getElementById('joy').style.display='block';};let sx=0,sy=0;const joy=document.getElementById('joy'),stick=document.getElementById('stick');joy.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY});joy.addEventListener('touchmove',e=>{let dx=e.touches[0].clientX-sx,dy=e.touches[0].clientY-sy;stick.style.transform=`translate(${Math.max(-30,Math.min(30,dx))}px,${Math.max(-30,Math.min(30,dy))}px)`;});joy.addEventListener('touchend',()=>{stick.style.transform='translate(0,0)';});</script></body></html>
+          HTML
+          ls -lh
+          cat package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+      - uses: android-actions/setup-android@v3
+
+      - name: Install
+        run: npm install
+      - name: Add Android
+        run: npx cap add android
+      - name: Copy web
+        run: npx cap copy android
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+         ./gradlew assembleDebug --no-daemon
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JaanNurie-FULL-GAME-FIXED
+          path: android/app/build/outputs/apk/debug/app-debug.apk
